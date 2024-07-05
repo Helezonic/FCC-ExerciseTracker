@@ -22,6 +22,9 @@ const exerciseSchema = new mongoose.Schema (
       ref : userModel,
       required : true
     },
+  /*   username : {
+      type : String,
+    }, */
     description : {
       type : String, 
       required : true
@@ -31,7 +34,8 @@ const exerciseSchema = new mongoose.Schema (
       required : true
     },
     date : {
-      type : Date //Will Throw Cast Error
+      type : Date, //Will Throw Cast Error
+      default : Date.now()
     }
   }
 )

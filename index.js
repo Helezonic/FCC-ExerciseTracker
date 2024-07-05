@@ -6,7 +6,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const connectDB = require('./db/database.js')
 const { userModel, exerciseModel} = require('./model/usermodel.js')
-const {checkUser, logExercise} = require('./controllers/usercontroller.js')
+const {createUser, checkUser, logExercise} = require('./controllers/usercontroller.js')
 
 connectDB();
 
@@ -17,44 +17,46 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
-
+//CREATE USER
 app.post('/api/users', async (req,res) => {
   try {
-    const userCreated = await new userModel(req.body).save()
-    console.log("New user created")
-    res.json(userCreated)
+    res.json(await createUser(req.body))
   } catch (error) {
-    console.error(error)
+    console.error(error) //What error
   }
 })
 
+//CREATE LOGGINGS
 app.post('/api/users/:id/exercises', async (req,res) => {
   try {
-    //check whether req.body['_id'] exists --->> MIDDLEWARE
-    //Fetch its username
     console.log("Request Body = " ,req.body)
-    const user = await checkUser(req.body[':_id'])
-    if (!user){
+
+    //check whether req.body['_id'] exists --->> MIDDLEWARE  
+    const userExists = await checkUser(req.body[':_id'])
+    if (!userExists){
       res.send("User doesn't exist with that ID")
       return
     }
 
-    //if yes equate 'userId' of exerciseModel with ':_id'
-    const makeLoggings = {
-      userid : req.body[':_id'],
-      description : req.body.description,
-      duration : req.body.duration,
-      date : toDateString(new Date(req.body.date))
+    //if yes change :_id to userid for query purposes--->MIDDLEWARE
+    req.body.userid = userExists._id; // Before saving in database
+    delete req.body[':_id']
+    console.log("Request body before saving = ", req.body)
+
+    //then save the doc in exercise-loggings
+    const logged = await logExercise(req.body)
+
+
+    //Add details for client response after saving in database at the start
+    const loggedRes = {
+    '_id' : `${userExists._id}`, 
+    'username' : `${userExists.username}`,
+    ...logged
     }
-
-    //if yes save the doc in exerciseModel
-    res.json(await logExercise(makeLoggings))
     
-
+    console.log("Details added after saving = ", loggedRes)
+    res.json(loggedRes)
     
-    //fetch username matching the _id
-    //create a new json with username, _id and the doc
-    //respond with new JSON
   } catch (error) {
     console.error(error)
   }
