@@ -1,4 +1,4 @@
-const { default: mongoose } = require("mongoose");
+const { default: mongoose, set } = require("mongoose");
 const modelName = "userCollection"
 
 //Create Schema structures
@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema (
   }
 )
 
-const userModel = mongoose.model(modelName, userSchema)
+const UserModel = mongoose.model(modelName, userSchema)
 
 
 
@@ -19,12 +19,9 @@ const exerciseSchema = new mongoose.Schema (
   {
     userid : {
       type : mongoose.Schema.Types.ObjectId,
-      ref : userModel,
+      ref : UserModel,
       required : true
     },
-  /*   username : {
-      type : String,
-    }, */
     description : {
       type : String, 
       required : true
@@ -35,13 +32,13 @@ const exerciseSchema = new mongoose.Schema (
     },
     date : {
       type : Date, //Will Throw Cast Error
-      default : Date.now()
+      default : new Date(),
     }
   }
 )
 
 //Create model
 
-const exerciseModel = mongoose.model("exercise-loggings", exerciseSchema)
+const ExerciseModel = mongoose.model("exercise-loggings", exerciseSchema)
 
-module.exports = {userModel, exerciseModel};
+module.exports = {UserModel, ExerciseModel};

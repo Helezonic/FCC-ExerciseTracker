@@ -1,8 +1,8 @@
-const { userModel, exerciseModel} = require('../model/usermodel.js')
+const { UserModel, ExerciseModel} = require('../model/usermodel.js')
 
 //CREATE USER
 const createUser = async (username) => {
-  return await new userModel(username).save()
+  return await new UserModel(username).save()
   .then((savedUser) => {
   const {__v, ...cleanedUser } = savedUser.toObject();
   console.log("New User Created \n", cleanedUser);
@@ -16,7 +16,7 @@ const createUser = async (username) => {
 //By default return falsy value unless User Exists.
 const checkUser = async(id) => {
   console.log("checkUser", id)
-  return await userModel.findById(`${id}`)
+  return await UserModel.findById(`${id}`)
   .then(user => { //If id exists, resolved = truthy
     if(user) {
       const cleaneduser= user.toObject();
@@ -30,9 +30,9 @@ const checkUser = async(id) => {
 }
 
 
-//Save exerciseModel with Username and ID added
+//Save ExerciseModel with Username and ID added
 const logExercise = async (data) => {
-  return await new exerciseModel(data).save()
+  return await new ExerciseModel(data).save()
     .then((loggedExercise) => {
       logEx = loggedExercise.toObject()
       console.log("Exercise Logged in db = \n", loggedExercise);

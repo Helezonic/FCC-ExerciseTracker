@@ -1,14 +1,14 @@
 require('dotenv').config()
+const {createUser, checkUser, logExercise} = require('./controllers/usercontroller.js')
+const { ExerciseModel, UserModel } = require('./model/usermodel.js')
 
 const express = require('express')
 const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const connectDB = require('./db/database.js')
-const { userModel, exerciseModel} = require('./model/usermodel.js')
-const {createUser, checkUser, logExercise} = require('./controllers/usercontroller.js')
+const { now } = require('mongoose')
 
-connectDB();
 
 app.use(bodyParser.urlencoded({'extended' : 'false'}))
 app.use(cors())
@@ -17,7 +17,14 @@ app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
 
-//CREATE USER
+
+
+//!CONNECT DATABASE
+connectDB();
+
+
+
+//!CREATE USER
 app.post('/api/users', async (req,res) => {
   try {
     res.json(await createUser(req.body))
@@ -26,7 +33,9 @@ app.post('/api/users', async (req,res) => {
   }
 })
 
-//CREATE LOGGINGS
+
+
+//!CREATE EXERCISE LOGGINGS
 app.post('/api/users/:id/exercises', async (req,res) => {
   try {
     console.log("Request Body = " ,req.body)
@@ -38,22 +47,25 @@ app.post('/api/users/:id/exercises', async (req,res) => {
       return
     }
 
-    //if yes change :_id to userid for query purposes--->MIDDLEWARE
-    req.body.userid = userExists._id; // Before saving in database
+    //DUE TO SCHEMATIC AND RESPONSE CONFUSION
+    //if yes change :_id to userid for query purposes and delete :_id before saving in database--->MIDDLEWARE
+    req.body.userid = userExists._id; 
     delete req.body[':_id']
     console.log("Request body before saving = ", req.body)
 
     //then save the doc in exercise-loggings
     const logged = await logExercise(req.body)
+    //logged.date = logged.date.toDateString()
 
-
-    //Add details for client response after saving in database at the start
+    //DUE TO SCHEMATIC AND RESPONSE CONFUSION
+    //Add details at the start for client response after saving in database. Can this be done with populate()?
     const loggedRes = {
     '_id' : `${userExists._id}`, 
     'username' : `${userExists.username}`,
     ...logged
     }
     
+    //Response JSON
     console.log("Details added after saving = ", loggedRes)
     res.json(loggedRes)
     
@@ -62,21 +74,64 @@ app.post('/api/users/:id/exercises', async (req,res) => {
   }
 })
 
+
+//!FETCH ALL USERS
 app.get('/api/users', async (req,res) => {
   try {
-    //respond with all userModel documents
+    //respond with all UserModel documents
+    res.json( await UserModel.find())
   } catch (error) {
     console.error(error)
   }
 })
 
+
+//!FETCH A USER'S LOGGINGS
 app.get('/api/users/:id/logs', async (req,res) => {
   try {
+  
+
     //Check whether id exists
-    //If yes, count number of exerciseModel docs with that id
-    //fetch all the docs, remove the id, push each to an array 'Log', limit the log
-    //fetch the username of the id from userModel
-    //respond with id, username, count and log
+    const userExists = await checkUser(req.params.id)
+    if (!userExists){
+      res.send("User doesn't exist with that ID")
+      return
+    }
+
+    //URL Query Parameters - ?from=startDate&to=endDate&limit=limit
+    const query = {
+      startDate : new Date(req.query['from']) || Date(null).toDateString(),
+      endDate : new Date(req.query['to']) || Date().toDateString(),
+      limit : req.query['limit']
+    }
+
+    console.log(query.startDate, "\n",query.endDate)
+    
+     //If yes, fetch the loggings of ExerciseModel with that id, filter out _id, userid, __v, query by date range
+    const userLoggings = await ExerciseModel.find({
+      "userid" : `${userExists._id}`, 
+      'date' : {
+        $lte : query.endDate, 
+        $gte : query.startDate
+      }
+    },{'_id' : false, 'userid' : false, '__v' : false}
+    )
+
+    const formattedLoggings = userLoggings.forEach(logging => {
+      logging.date = logging.date.toDateString()
+    });
+    
+    const countLoggings = userLoggings.length
+
+    //fetch the username of the id from UserModel
+    const response = {
+      '_id' : userExists._id,
+      'username' : userExists.username,
+      'count' : countLoggings,
+      'log' : formattedLoggings
+    }
+
+    res.json(response)
   } catch (error) {
     console.error(error)
   }
